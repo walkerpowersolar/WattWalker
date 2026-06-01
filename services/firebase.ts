@@ -9,13 +9,13 @@ import {
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAm3mmfBPSDT12FvL3C8ghhO-eZKGxhy9s",
-  authDomain: "gen-lang-client-0730106196.firebaseapp.com",
-  projectId: "gen-lang-client-0730106196",
-  storageBucket: "gen-lang-client-0730106196.firebasestorage.app",
-  messagingSenderId: "974317429927",
-  appId: "1:974317429927:web:979646441f42e792dc2782",
-  measurementId: "G-K502FQE110",
+  apiKey: "AIzaSyANLsms4NhwUfEVm5EsMwtmpeStP8FhASk",
+  authDomain: "newwattwalker.firebaseapp.com",
+  projectId: "newwattwalker",
+  storageBucket: "newwattwalker.firebasestorage.app",
+  messagingSenderId: "459814369556",
+  appId: "1:459814369556:web:5515d7fbb763b50fc22a01",
+  measurementId: "G-MKSR95NW1C"
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
