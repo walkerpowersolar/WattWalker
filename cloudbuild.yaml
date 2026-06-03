@@ -7,14 +7,14 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/wattwalker'
+      - '$_AR_HOSTNAME/$PROJECT_ID/$_AR_REPOSITORY/$_SERVICE_NAME'
       - '.'
   
   # Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/wattwalker'
+      - '$_AR_HOSTNAME/$PROJECT_ID/$_AR_REPOSITORY/$_SERVICE_NAME'
   
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -22,11 +22,11 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'wattwalker'
+      - '$_SERVICE_NAME'
       - '--image'
-      - 'us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/wattwalker'
+      - '$_AR_HOSTNAME/$PROJECT_ID/$_AR_REPOSITORY/$_SERVICE_NAME'
       - '--region'
-      - 'us-west1'
+      - '$_DEPLOY_REGION'
       - '--allow-unauthenticated'
       - '--set-env-vars'
       - 'GEMINI_API_KEY=${_GEMINI_API_KEY}'
@@ -34,6 +34,10 @@ steps:
 # Substitution variables - set these in Cloud Build Trigger settings
 substitutions:
   _GEMINI_API_KEY: ''
+  _AR_HOSTNAME: 'us-east1-docker.pkg.dev'
+  _AR_REPOSITORY: 'cloud-run-source-deploy'
+  _DEPLOY_REGION: 'us-east1'
+  _SERVICE_NAME: 'wattwalker'
 
 images:
-  - 'us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/wattwalker'
+  - '$_AR_HOSTNAME/$PROJECT_ID/$_AR_REPOSITORY/$_SERVICE_NAME'

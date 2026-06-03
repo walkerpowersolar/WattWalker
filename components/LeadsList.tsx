@@ -123,7 +123,7 @@ const LeadsList: React.FC<LeadsListProps> = ({ records, userRole, onClose, onUpd
     };
 
     const handleCopyCalendarLink = (record: SavedRecord) => {
-        const link = `https://wattwalker.njsolar.today/lead/${record.id}`;
+        const link = `https://wattwalker.walkerpowersolar.com/lead/${record.id}`;
         navigator.clipboard.writeText(link).then(() => {
             alert('Link copied! You can paste this into your calendar.');
         });
