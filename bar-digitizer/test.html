@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Detector self-test</title>
+<style>body{font-family:ui-monospace,monospace;background:#0f172a;color:#e2e8f0;padding:20px}
+pre{font-size:14px;line-height:1.6}.ok{color:#22c55e}.bad{color:#ef4444}canvas{border:1px solid #334155;margin-top:12px}</style>
+</head>
+<body>
+<h3>BarDetector self-test (synthetic chart, known values)</h3>
+<pre id="out"></pre>
+<canvas id="c" width="640" height="420"></canvas>
+<script src="detector.js"></script>
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d', {willReadFrequently:true});
+// White chart background
+ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,cv.width,cv.height);
+// Axes (black) + a couple gray gridlines to make it realistic noise
+ctx.strokeStyle='#000'; ctx.lineWidth=2;
+const originX=70, baselineY=360, topY=40; // p1 & p2 y
+ctx.beginPath(); ctx.moveTo(originX,topY); ctx.lineTo(originX,baselineY); ctx.lineTo(610,baselineY); ctx.stroke();
+ctx.strokeStyle='#cccccc'; ctx.lineWidth=1;
+for(let g=1;g<5;g++){const y=baselineY-(baselineY-topY)*g/5;ctx.beginPath();ctx.moveTo(originX,y);ctx.lineTo(610,y);ctx.stroke();}
+// Bars
+const vMax=1000, scalePx=baselineY-topY;
+const expected=[900,610,305,760,1000,130,485,700];
+const barColor='rgb(0,120,220)';
+ctx.fillStyle=barColor;
+const bw=40, gap=25; let x=originX+20;
+const centers=[];
+expected.forEach(v=>{const h=v*scalePx/vMax; ctx.fillRect(x,baselineY-h,bw,h); centers.push(x+bw/2); x+=bw+gap;});
+// Draw value labels on top of bars (dark text) to test gap-bridging robustness
+ctx.fillStyle='#222'; ctx.font='11px monospace'; ctx.textAlign='center';
+expected.forEach((v,i)=>{const h=v*scalePx/vMax; ctx.fillText(String(v), centers[i], baselineY-h-4);});
+
+// Run detection
+const img = ctx.getImageData(0,0,cv.width,cv.height);
+const res = BarDetector.detectBarValues({
+  data: img.data, width: cv.width,
+  calib: { p1x: originX, p1y: baselineY, p2x: originX, p2y: topY, v1: 0, v2: vMax },
+  target: [0,120,220], tol: 45, minHeightFrac: 0.005, minWidthPx: 4, allowedGap: 6,
+});
+
+let out = `Calibration: baseline y=${baselineY} -> 0,  top y=${topY} -> ${vMax}\n`;
+out += `Bars detected: ${res.bars.length} (expected ${expected.length})\n\n`;
+out += `#   expected   detected   err\n`;
+let maxErr=0, allWithin=true;
+res.bars.forEach((b,i)=>{
+  const exp=expected[i], det=Math.round(b.value), err=Math.abs(det-exp);
+  maxErr=Math.max(maxErr,err); if(err>8) allWithin=false;
+  out += `${String(i+1).padEnd(4)}${String(exp).padEnd(11)}${String(det).padEnd(11)}${err}\n`;
+});
+out += `\nMax abs error: ${maxErr} units (${(maxErr/vMax*100).toFixed(2)}% of scale)\n`;
+const pass = res.bars.length===expected.length && allWithin;
+out += pass ? '\nRESULT: PASS ✓ (all bars within 8 units)' : '\nRESULT: FAIL ✗';
+const el=document.getElementById('out'); el.textContent=out; el.className=pass?'ok':'bad';
+window.__PASS__ = pass; window.__MAXERR__ = maxErr;
+</script>
+</body>
+</html>

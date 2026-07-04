@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage Reader — WattWalker</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel2: #0b1220;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #00a8f9;
+      --accent2: #38bdf8;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--panel2);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { font-size: 17px; margin: 0; letter-spacing: -0.02em; }
+    header .tag { font-size: 11px; color: var(--muted); background: #0f1b2e; border: 1px solid var(--border); padding: 3px 8px; border-radius: 999px; }
+    .layout { display: flex; gap: 16px; padding: 16px; align-items: flex-start; }
+    .canvas-wrap {
+      flex: 1;
+      min-width: 0;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      position: relative;
+    }
+    .canvas-scroll { overflow: auto; max-height: calc(100vh - 140px); border-radius: 8px; }
+    canvas { display: block; max-width: 100%; height: auto; background: #020617; border-radius: 6px; cursor: crosshair; }
+    .empty {
+      display: flex; align-items: center; justify-content: center; min-height: 380px;
+      color: var(--muted); text-align: center; border: 2px dashed var(--border); border-radius: 10px; padding: 30px;
+    }
+    aside { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 10px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row + .row { margin-top: 8px; }
+    label.field { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    input[type="text"], input[type="number"], input[type="password"], select {
+      background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+      border-radius: 7px; padding: 7px 9px; font-size: 13px; width: 100%;
+    }
+    input[type="range"] { width: 100%; }
+    button {
+      background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .12s;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #04121f; }
+    button.primary:hover { background: var(--accent2); }
+    button.big { width: 100%; padding: 13px; font-size: 15px; }
+    button.active { background: var(--accent); border-color: var(--accent); color: #04121f; }
+    button.ghost { background: transparent; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .swatch { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0; }
+    .hint { font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 8px; }
+    .status { font-size: 12px; padding: 8px 10px; border-radius: 8px; margin-top: 10px; display: none; }
+    .status.show { display: block; }
+    .status.info { background: #082f49; color: #bae6fd; border: 1px solid #0e7490; }
+    .status.warn { background: #422006; color: #fde68a; border: 1px solid #b45309; }
+    .status.bad { background: #450a0a; color: #fecaca; border: 1px solid #b91c1c; }
+    .status.good { background: #052e16; color: #bbf7d0; border: 1px solid #14532d; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    td input { padding: 4px 6px; font-size: 12px; }
+    td.val { font-variant-numeric: tabular-nums; font-weight: 700; }
+    .total-row td { border-bottom: none; font-weight: 800; color: var(--accent2); font-size: 15px; }
+    .slider-val { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--text); min-width: 42px; text-align: right; }
+    .file-drop {
+      border: 2px dashed var(--border); border-radius: 10px; padding: 22px 18px; text-align: center;
+      color: var(--muted); font-size: 14px; cursor: pointer; transition: all .12s; font-weight: 600;
+    }
+    .file-drop:hover, .file-drop.drag { border-color: var(--accent); color: var(--text); background: #0b1a2b; }
+    .file-drop small { display: block; font-weight: 400; font-size: 11px; margin-top: 4px; }
+    details { margin-top: 6px; }
+    summary { cursor: pointer; font-size: 12px; color: var(--muted); padding: 4px 0; }
+    .mono { font-variant-numeric: tabular-nums; }
+    .adv-block + .adv-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+    @media (max-width: 820px) {
+      .layout { flex-direction: column; }
+      aside { width: 100%; }
+      .canvas-wrap { width: 100%; }
+      .canvas-scroll { max-height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Usage Reader</h1>
+    <span class="tag">WattWalker · standalone</span>
+    <span id="dimTag" class="tag" style="display:none"></span>
+  </header>
+
+  <div class="layout">
+    <!-- Canvas / image -->
+    <div class="canvas-wrap">
+      <div id="emptyState" class="empty">
+        <div>
+          <div style="font-size:15px;color:var(--text);margin-bottom:6px;font-weight:600;">Add your electric bill's usage graph</div>
+          <div>Take a photo or upload it — the app finds the chart, reads the scale, and totals each month automatically.</div>
+        </div>
+      </div>
+      <div class="canvas-scroll" id="canvasScroll" style="display:none;">
+        <canvas id="canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <aside>
+      <!-- 1. Image -->
+      <div class="card">
+        <h2>1. Add the graph</h2>
+        <div id="fileDrop" class="file-drop">
+          Tap to take a photo or choose an image
+          <small>PSE&amp;G · ACE · JCP&amp;L usage graphs, screenshots or photos</small>
+          <input id="fileInput" type="file" accept="image/*" style="display:none" />
+        </div>
+      </div>
+
+      <!-- 2. Bar color -->
+      <div class="card">
+        <h2>2. Bar color</h2>
+        <div class="seg">
+          <button id="colorAuto" class="active" disabled>Auto (any color)</button>
+          <button id="colorPick" disabled>Tap the bar</button>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div id="swatch" class="swatch" title="Detected color"></div>
+          <span class="hint" id="colorHint" style="margin-top:0;">Auto works for orange, blue, or black bars. If a bar is a faint color, tap "Tap the bar" then tap a bar.</span>
+        </div>
+      </div>
+
+      <!-- 3. Detect -->
+      <div class="card">
+        <h2>3. Read it</h2>
+        <button id="detectBtn" class="primary big" disabled>Detect Usage</button>
+        <div class="hint">Finds the chart, reads the top Y-axis number and the first month, then measures every bar's height.</div>
+        <div id="detectStatus" class="status"></div>
+      </div>
+
+      <!-- 4. Results -->
+      <div class="card">
+        <h2>4. Results (last 12 months → Jan–Dec)</h2>
+        <div class="row" style="margin-bottom:8px;">
+          <label class="field">Y-axis max (top number)
+            <input id="vmaxInput" type="number" step="any" placeholder="auto" />
+          </label>
+          <label class="field">First month (leftmost bar)
+            <select id="firstMonth">
+              <option value="">auto</option>
+              <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+              <option>May</option><option>Jun</option><option>Jul</option><option>Aug</option>
+              <option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+            </select>
+          </label>
+        </div>
+        <div id="barCountNote" class="hint"></div>
+        <table id="resultsTable">
+          <thead><tr><th style="width:50%">Month</th><th>Value</th></tr></thead>
+          <tbody id="resultsBody"></tbody>
+          <tfoot><tr class="total-row"><td>Total (12 mo)</td><td id="totalVal" class="mono">—</td></tr></tfoot>
+        </table>
+        <div class="btn-grid" style="margin-top:12px;">
+          <button id="copyBtn" disabled>Copy</button>
+          <button id="csvBtn" disabled>Download CSV</button>
+        </div>
+      </div>
+
+      <!-- Advanced / fallback -->
+      <details class="card">
+        <summary>Advanced &amp; manual override (rarely needed)</summary>
+
+        <div class="adv-block" style="margin-top:12px;">
+          <div class="hint" style="margin-top:0;margin-bottom:8px;color:var(--text);font-weight:600;">AI (reads Y-axis number &amp; month)</div>
+          <label class="field">Gemini API key
+            <input id="apiKey" type="password" placeholder="AIza… (stored locally in this browser)" />
+          </label>
+          <label class="field" style="margin-top:8px;">Model
+            <input id="model" type="text" value="gemini-2.5-flash" />
+          </label>
+          <div class="hint">In the real WattWalker app this key is built in, so phone users enter nothing. Here, paste a key once to enable auto-reading of the scale &amp; months.</div>
+        </div>
+
+        <div class="adv-block">
+          <div class="hint" style="margin-top:0;margin-bottom:8px;color:var(--text);font-weight:600;">Manual calibration</div>
+          <button id="cropBtn" style="width:100%;margin-bottom:8px;">Select chart area (drag a box)</button>
+          <div class="btn-grid">
+            <button id="p1Btn">Set P1 (origin = 0)</button>
+            <button id="p2Btn">Set P2 (Y-max)</button>
+          </div>
+          <button id="aiBtn" class="ghost" style="width:100%;margin-top:8px;">Re-run AI calibration</button>
+          <div class="hint" id="calibHint">Only if auto is off: "Set P1" then click where the axes meet (0). "Set P2" then click the top Y tick. Then set the Y-max value above.</div>
+        </div>
+
+        <div class="adv-block">
+          <div class="hint" style="margin-top:0;margin-bottom:8px;color:var(--text);font-weight:600;">Detection tuning</div>
+          <label class="field"><span id="tolLabel">Contrast (min saturation)</span> <span class="slider-val" id="tolVal">45</span></label>
+          <input id="tol" type="range" min="5" max="255" value="45" />
+          <label class="field" style="margin-top:8px;">Min bar height (% of scale) <span class="slider-val" id="minhVal">1.0</span></label>
+          <input id="minh" type="range" min="0" max="100" value="10" />
+          <label class="field" style="margin-top:8px;">Min bar width (px) <span class="slider-val" id="minwVal">3</span></label>
+          <input id="minw" type="range" min="1" max="40" value="3" />
+          <label class="field" style="margin-top:8px;">Gap bridge (px) — raise for bars with letters inside <span class="slider-val" id="gapVal">8</span></label>
+          <input id="gap" type="range" min="1" max="50" value="8" />
+        </div>
+      </details>
+    </aside>
+  </div>
+
+  <script src="detector.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

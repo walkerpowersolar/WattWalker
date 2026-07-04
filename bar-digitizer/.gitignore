@@ -1,0 +1,10 @@
+# Local test / bill images — real bills contain customer PII, NEVER commit these.
+samples/
+*_crop.png
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+*.pdf

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Real-bill detection test</title>
+<style>body{font-family:ui-monospace,monospace;background:#0f172a;color:#e2e8f0;padding:16px}
+pre{font-size:13px;line-height:1.5}canvas{max-width:900px;border:1px solid #334155;margin-top:10px;background:#000}</style>
+</head>
+<body>
+<h3 id="title">Real-bill detection test</h3>
+<pre id="out">loading…</pre>
+<canvas id="c"></canvas>
+<script src="detector.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const imgSrc = q.get('img') || 'samples/pseg.png';
+const vmax = parseFloat(q.get('vmax') || '100');
+const mode = q.get('mode') || 'contrast';
+const rx0 = parseFloat(q.get('rx0') ?? '0'), ry0 = parseFloat(q.get('ry0') ?? '0');
+const rx1 = parseFloat(q.get('rx1') ?? '1'), ry1 = parseFloat(q.get('ry1') ?? '1');
+const tol = parseFloat(q.get('tol') || (mode==='contrast'?'60':'70'));
+const minh = parseFloat(q.get('minh') || '0.02');
+const minw = parseFloat(q.get('minw') || '3');
+const target = (q.get('target')||'').split(',').map(Number);
+
+const cv = document.getElementById('c'), ctx = cv.getContext('2d', {willReadFrequently:true});
+const img = new Image();
+img.onload = () => {
+  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0,0,cv.width,cv.height).data;
+  const region = {
+    x0: Math.round(rx0*cv.width), y0: Math.round(ry0*cv.height),
+    x1: Math.round(rx1*cv.width), y1: Math.round(ry1*cv.height),
+  };
+  let cal = BarDetector.autoCalibrate(data, cv.width, cv.height, region);
+  // Optional explicit calibration overrides (fractions of image height/width).
+  const bf = q.get('bf'), tf = q.get('tf'), pxf = q.get('pxf');
+  if (cal && (bf || tf || pxf)) {
+    if (bf) cal.p1y = Math.round(parseFloat(bf) * cv.height);
+    if (tf) cal.p2y = Math.round(parseFloat(tf) * cv.height);
+    if (pxf) { cal.p1x = Math.round(parseFloat(pxf) * cv.width); cal.p2x = cal.p1x; }
+  }
+  let out = `img=${imgSrc} (${cv.width}x${cv.height})  mode=${mode} tol=${tol}\n`;
+  out += `region px: x[${region.x0}-${region.x1}] y[${region.y0}-${region.y1}]\n`;
+  if (!cal) { out += 'autoCalibrate: NULL (no bars found)'; document.getElementById('out').textContent = out; return; }
+  out += `bg=${cal.bg}  barColorEst=${cal.target}\n`;
+  out += `P1(origin)=(${cal.p1x},${cal.p1y})=0   P2(top)=(${cal.p2x},${cal.p2y})=${vmax}\n`;
+  const calib = { p1x:cal.p1x, p1y:cal.p1y, p2x:cal.p2x, p2y:cal.p2y, v1:0, v2:vmax };
+  const gap = parseInt(q.get('gap') || '6', 10);
+  const res = BarDetector.detectBarValues({
+    data, width:cv.width, calib,
+    mode, target: target.length===3?target:cal.target, bg:cal.bg,
+    tol, plot:{x0:region.x0, x1:region.x1},
+    allowedGap:gap, minHeightFrac:minh, minWidthPx:minw, gapMergePx:3,
+  });
+  out += `\nBars detected: ${res.bars.length}\n#   value   topY  wPx\n`;
+  res.bars.forEach((b,i)=>{ out += `${String(i+1).padEnd(4)}${String(Math.round(b.value)).padEnd(8)}${String(b.topY).padEnd(6)}${b.widthPx}\n`; });
+  const total = res.bars.reduce((s,b)=>s+Math.round(b.value),0);
+  out += `\nTotal = ${total}\n`;
+  document.getElementById('out').textContent = out;
+
+  // overlay
+  ctx.strokeStyle='#38bdf8'; ctx.lineWidth=Math.max(1,cv.width/700);
+  ctx.strokeRect(region.x0,region.y0,region.x1-region.x0,region.y1-region.y0);
+  ctx.strokeStyle='#22c55e'; ctx.beginPath(); ctx.moveTo(0,cal.p1y); ctx.lineTo(cv.width,cal.p1y); ctx.stroke();
+  ctx.strokeStyle='#f59e0b'; ctx.setLineDash([8,6]); ctx.beginPath(); ctx.moveTo(0,cal.p2y); ctx.lineTo(cv.width,cal.p2y); ctx.stroke(); ctx.setLineDash([]);
+  const fs=Math.max(12,cv.width/60);
+  res.bars.forEach((b)=>{
+    ctx.strokeStyle='rgba(255,0,0,0.9)'; ctx.beginPath(); ctx.moveTo(b.xCenter,cal.p1y); ctx.lineTo(b.xCenter,b.topY); ctx.stroke();
+    ctx.fillStyle='#000'; ctx.fillRect(b.xCenter-2,b.topY-2,5,5);
+    ctx.font='700 '+fs+'px monospace'; ctx.textAlign='center'; ctx.lineWidth=fs/4; ctx.strokeStyle='#fff';
+    ctx.strokeText(Math.round(b.value), b.xCenter, b.topY-4); ctx.fillText(Math.round(b.value), b.xCenter, b.topY-4);
+  });
+};
+img.onerror = () => { document.getElementById('out').textContent = 'Failed to load '+imgSrc; };
+img.src = imgSrc;
+</script>
+</body>
+</html>
